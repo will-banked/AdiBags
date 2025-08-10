@@ -729,6 +729,14 @@ local function GetOptions()
 		},
 		plugins = {}
 	}
+	if addon.isRetail then
+		options["args"]["bags"]["args"]["automatically"]["args"]["autoDeposit"] = {
+			name = L["Deposit reagents"],
+			desc = L["Automatically deposit all reagents into the bank when you talk to the banker."],
+			type = 'toggle',
+			order = 110,
+		}
+	end
 	hooksecurefunc(addon, "OnModuleCreated", OnModuleCreated)
 	for name, module in addon:IterateModules() do
 		OnModuleCreated(addon, module)
