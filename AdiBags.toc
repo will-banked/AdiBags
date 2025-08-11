@@ -32,6 +32,18 @@
 ## OptionalDeps: AdiDebug, BugSack, Swatter
 #@end-alpha@
 
+## Category-enUS: Inventory
+## Category-deDE: Inventar
+## Category-esES: Inventario
+## Category-esMX: Inventario
+## Category-frFR: Inventaire
+## Category-itIT: Inventario
+## Category-koKR: 소지품
+## Category-ptBR: Inventário
+## Category-ruRU: Предметы
+## Category-zhCN: 物品栏
+## Category-zhTW: 物品欄
+
 #@no-lib-strip@
 libs\LibStub\LibStub.lua
 libs\CallbackHandler-1.0\CallbackHandler-1.0.xml
