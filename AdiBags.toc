@@ -17,7 +17,7 @@
 # You should have received a copy of the GNU General Public License
 # along with AdiBags.  If not, see <http://www.gnu.org/licenses/>.
 
-## Interface: 110200
+## Interface: 120005
 
 ## Title: AdiBags
 ## Notes: Adirelle's bag addon.
@@ -99,7 +99,6 @@ modules\Masque.lua
 
 core\ItemDatabase.lua
 core\DefaultFilters.lua
-core\Deprecation.lua
 
 #@debug@
 ## Version: DEV
