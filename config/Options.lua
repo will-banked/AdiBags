@@ -569,8 +569,8 @@ local function GetOptions()
 						}
 					},
 					backpack = CreateBagOptions("Backpack", "backpack"),
-					bank = CreateBagOptions("Bank", "bank"),
-					reagentBank = CreateBagOptions("Reagent Bank", "reagentBank"),
+					-- TODO: Re-enable with bank fixes
+					--bank = CreateBagOptions("Bank", "bank"),
 				}
 			},
 			items = {
@@ -731,11 +731,23 @@ local function GetOptions()
 	}
 	if addon.isRetail then
 		options["args"]["bags"]["args"]["automatically"]["args"]["autoDeposit"] = {
-			name = L["Deposit reagents"],
-			desc = L["Automtically deposit all reagents into the reagent bank when you talk to the banker."],
-			type = 'toggle',
+			name = L["Auto-deposit reagents"],
+			desc = L["Automatically deposit crafting reagents when you open the bank. Can also be toggled by right-clicking the deposit button."],
+			type = 'select',
 			order = 110,
-			disabled = function() return not IsReagentBankUnlocked() end,
+			values = {
+				[""] = L["Disabled"],
+				["bank"] = L["Character Bank"],
+				["warbank"] = L["Warbank"],
+			},
+			get = function() return addon.db.profile.autoDeposit or "" end,
+			set = function(_, val) addon.db.profile.autoDeposit = val == "" and false or val end,
+		}
+		options["args"]["bags"]["args"]["automatically"]["args"]["autoDepositGear"] = {
+			name = L["Auto-deposit warbound gear"],
+			desc = L["Automatically deposit warbound gear into the Warbank when you open the bank. Can also be toggled by right-clicking the gear deposit button."],
+			type = 'toggle',
+			order = 115,
 		}
 	end
 	hooksecurefunc(addon, "OnModuleCreated", OnModuleCreated)

@@ -154,8 +154,8 @@ end
 
 function sectionProto:UpdateFont()
 	local font
-	if self.container.isReagentBank then
-		font = addon.fonts.reagentBank.sectionFont
+	if self.container.isWarbank then
+		font = addon.fonts.warbank.sectionFont
 		self.Header:SetNormalFontObject(font)
 		font:ApplySettings()
 	else

@@ -23,7 +23,6 @@ local addonName, addon = ...
 
 --<GLOBALS
 local _G = _G
-local BankButtonIDToInvSlotID = _G.BankButtonIDToInvSlotID
 local BANK_CONTAINER = BANK_CONTAINER or ( Enum.BagIndex and Enum.BagIndex.Bank ) or -1
 local ContainerFrame_UpdateCooldown = _G.ContainerFrame_UpdateCooldown
 local format = _G.format
@@ -148,16 +147,14 @@ end
 --------------------------------------------------------------------------------
 
 local bankButtonClass, bankButtonProto = addon:NewClass("BankItemButton", "ItemButton")
-bankButtonClass.frameTemplate = "BankItemButtonGenericTemplate"
+bankButtonClass.frameTemplate = "ContainerFrameItemButtonTemplate"
 
 function bankButtonProto:OnAcquire(container, bag, slot)
-	self.GetInventorySlot = nil -- Remove the method added by the template
-	self.inventorySlot = bag == REAGENTBANK_CONTAINER and ReagentBankButtonIDToInvSlotID(slot) or BankButtonIDToInvSlotID(slot)
 	return buttonProto.OnAcquire(self, container, bag, slot)
 end
 
 function bankButtonProto:IsLocked()
-	return IsInventoryItemLocked(self.inventorySlot)
+	return addon:GetContainerItemLocked(self.bag, self.slot)
 end
 
 function bankButtonProto:UpdateNew()
@@ -169,7 +166,9 @@ function bankButtonProto:GetInventorySlot()
 end
 
 function bankButtonProto:UpdateUpgradeIcon()
-	if self.bag ~= BANK_CONTAINER and self.bag ~= REAGENTBANK_CONTAINER then
+	local BANK_BAG_IDS = addon.BAG_IDS.BANK
+	local WARBANK_BAG_IDS = addon.BAG_IDS.WARBANK
+	if not BANK_BAG_IDS[self.bag] and not WARBANK_BAG_IDS[self.bag] then
 		buttonProto.UpdateUpgradeIcon(self)
 	end
 end
@@ -182,7 +181,7 @@ local containerButtonPool = addon:CreatePool(buttonClass)
 local bankButtonPool = addon:CreatePool(bankButtonClass)
 
 function addon:AcquireItemButton(container, bag, slot)
-	if bag == BANK_CONTAINER or bag == REAGENTBANK_CONTAINER then
+	if addon.BAG_IDS.BANK[bag] or addon.BAG_IDS.WARBANK[bag] then
 		return bankButtonPool:Acquire(container, bag, slot)
 	else
 		return containerButtonPool:Acquire(container, bag, slot)

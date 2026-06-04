@@ -126,7 +126,7 @@ function addon:ToggleAnchor()
 end
 
 function addon:UpdatePositionMode()
-	if self.db.profile.positionMode ~= 'anchored' then
+	if self.anchor and self.db.profile.positionMode ~= 'anchored' then
 		self.anchor:Hide()
 	end
 	self:LayoutBags()

@@ -202,7 +202,13 @@ end
 function mod:Update(event)
 	local bags = BuildSpaceString(addon.BAG_IDS.BAGS)
 	if self.atBank and self.db.profile.showBank then
-		dataObject.text = format("%s |cff7777ff%s|r", bags, BuildSpaceString(addon.BAG_IDS.BANK))
+		local bankSpace = BuildSpaceString(addon.BAG_IDS.BANK)
+		local warbankSpace = addon.isRetail and BuildSpaceString(addon.BAG_IDS.WARBANK) or nil
+		if warbankSpace and warbankSpace ~= "" then
+			dataObject.text = format("%s |cff7777ff%s|r |cff77bbff%s|r", bags, bankSpace, warbankSpace)
+		else
+			dataObject.text = format("%s |cff7777ff%s|r", bags, bankSpace)
+		end
 	else
 		dataObject.text = bags
 	end

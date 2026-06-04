@@ -380,6 +380,11 @@ L["auto-deposit"] = true
 L["auto-sort"] = true
 L["disabled"] = true
 L["enabled"] = true
+L["Warbank"] = true
+L["Click to switch to Character Bank."] = true
+L["Click to switch to Warbank."] = true
+L["Deposit to Warbank"] = true
+L["Auto-deposits eligible items from your bags into the Warbank when enabled."] = true
 
 
 ------------------------ frFR ------------------------

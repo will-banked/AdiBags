@@ -32,15 +32,11 @@ along with AdiBags.  If not, see <http://www.gnu.org/licenses/>.
 
 BACKPACK_CONTAINER = Enum.BagIndex.Backpack
 BANK_CONTAINER = Enum.BagIndex.Bank
-REAGENTBANK_CONTAINER = Enum.BagIndex.Reagentbank
 NUM_BAG_SLOTS = Constants.InventoryConstants.NumBagSlots
 NUM_REAGENTBAG_SLOTS = Constants.InventoryConstants.NumReagentBagSlots
 NUM_BANKBAGSLOTS = Constants.InventoryConstants.NumBankBagSlots
 NUM_TOTAL_EQUIPPED_BAG_SLOTS = NUM_BAG_SLOTS + NUM_REAGENTBAG_SLOTS
-REAGENTBANK_DEPOSIT = REAGENTBANK_DEPOSIT
-REAGENT_BANK = REAGENT_BANK
 BANKSLOTPURCHASE = BANKSLOTPURCHASE
-REAGENTBANK_PURCHASE_TEXT = REAGENTBANK_PURCHASE_TEXT
 COSTS_LABEL = COSTS_LABEL
 ADDON_LOAD_FAILED = ADDON_LOAD_FAILED
 WOW_PROJECT_WRATH_CLASSIC = 11
@@ -329,9 +325,6 @@ function SortBags() end
 
 ---[Documentation](https://wowpedia.fandom.com/wiki/API_C_Container.SortBankBags)
 function SortBankBags() end
-
----[Documentation](https://wowpedia.fandom.com/wiki/API_C_Container.SortReagentBankBags)
-function SortReagentBankBags() end
 
 ---[Documentation](https://wowpedia.fandom.com/wiki/API_C_Container.SplitContainerItem)
 ---@param containerIndex number

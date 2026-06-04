@@ -44,7 +44,7 @@ function addon:SetTheme(name)
   local skin = self.db.profile.theme.themes[name]
 
   -- Copy each section over manually, so we don't break font settings.
-  for _, key in ipairs({'backpack', 'bank', 'reagentBank'}) do
+  for _, key in ipairs({'backpack', 'bank', 'warbank'}) do
     addon.db.profile.theme[key].background = skin[key].background
     addon.db.profile.theme[key].border = skin[key].border
     addon.db.profile.theme[key].insets = skin[key].insets
@@ -70,7 +70,7 @@ function addon:NewTheme(name)
   local theme = {
     backpack = _G.CopyTable(addon.db.profile.theme.backpack),
     bank = _G.CopyTable(addon.db.profile.theme.bank),
-    reagentBank = _G.CopyTable(addon.db.profile.theme.reagentBank)
+    warbank = _G.CopyTable(addon.db.profile.theme.warbank)
   }
   self:UpsertTheme(name, theme)
 end
@@ -80,7 +80,7 @@ function addon:SaveTheme()
   local theme = {
     backpack = _G.CopyTable(addon.db.profile.theme.backpack),
     bank = _G.CopyTable(addon.db.profile.theme.bank),
-    reagentBank = _G.CopyTable(addon.db.profile.theme.reagentBank)
+    warbank = _G.CopyTable(addon.db.profile.theme.warbank)
   }
   self:UpsertTheme(self.db.profile.theme.currentTheme, theme)
 end

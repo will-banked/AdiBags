@@ -24,8 +24,15 @@ local L = addon.L
 
 --<GLOBALS
 local _G = _G
+local C_CurrencyInfo = _G.C_CurrencyInfo
 local CreateFrame = _G.CreateFrame
+local GetMoney = _G.GetMoney
+local max = _G.max
+local NumberFontNormal = _G.NumberFontNormal
+local NumberFontNormalLarge = _G.NumberFontNormalLarge
 --GLOBALS>
+
+local GetCoinTextureString = C_CurrencyInfo.GetCoinTextureString
 
 local mod = addon:NewModule('MoneyFrame', 'ABEvent-1.0')
 mod.uiName = L['Money']
@@ -46,6 +53,7 @@ function mod:OnEnable()
 	addon:HookBagFrameCreation(self, 'OnBagFrameCreated')
 	if self.widget then
 		self.widget:Show()
+		self:UpdateMoney()
 	end
 end
 
@@ -58,18 +66,31 @@ end
 function mod:OnBagFrameCreated(bag)
 	if bag.bagName ~= "Backpack" then return end
 	local frame = bag:GetFrame()
-	local template, size = "MoneyFrameTemplate", 19
-	if self.db.profile.small then
-		template, size = "SmallMoneyFrameTemplate", 13
-	end
-	local widget = CreateFrame("Button", addonName.."MoneyFrame", frame, template)
+
+	local widget = CreateFrame("Button", addonName.."MoneyFrame", frame)
 	self.widget = widget
-	widget:SetHeight(size)
 	widget:RegisterForClicks("RightButtonUp")
 	widget:SetScript('OnClick', function() self:OpenOptions() end)
 	addon.SetupTooltip(widget, { L['Money'], L['Right-click to configure.'] }, "ANCHOR_BOTTOMRIGHT")
 
-	frame:AddBottomWidget(self.widget, "RIGHT", 50, size, size, 0)
+	local moneyText = widget:CreateFontString(nil, "OVERLAY")
+	moneyText:SetFontObject(self.db.profile.small and NumberFontNormal or NumberFontNormalLarge)
+	moneyText:SetPoint("BOTTOMRIGHT", widget, "BOTTOMRIGHT", -2, 0)
+	self.moneyText = moneyText
+
+	self:RegisterEvent("PLAYER_MONEY", "UpdateMoney")
+	self:UpdateMoney()
+
+	frame:AddBottomWidget(widget, "RIGHT", 50)
+end
+
+function mod:UpdateMoney()
+	if not self.moneyText then return end
+	self.moneyText:SetText(GetCoinTextureString(GetMoney()))
+	self.widget:SetSize(
+		max(self.moneyText:GetStringWidth() + 4, 0.1),
+		max(self.moneyText:GetStringHeight(), 0.1)
+	)
 end
 
 function mod:GetOptions()

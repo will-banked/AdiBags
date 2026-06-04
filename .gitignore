@@ -1,2 +1,6 @@
 /libs/**
 /.vscode/settings.json
+.idea
+.release
+/build
+.DS_Store

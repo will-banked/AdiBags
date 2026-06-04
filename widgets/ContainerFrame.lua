@@ -115,7 +115,7 @@ function containerProto:OnCreate(name, isBank, bagObject)
 	self.name = name
 	self.bagObject = bagObject
 	self.isBank = isBank
-	self.isReagentBank = false
+	self.isWarbank = false
 	self.firstLoad = true
 
 	self.buttons = {}
@@ -132,8 +132,12 @@ function containerProto:OnCreate(name, isBank, bagObject)
 	---@type Frame|Grid
 	self.Content = {}
 
-	local ids
-	for bagId in pairs(BAG_IDS[isBank and "BANK" or "BAGS"]) do
+	local allBankIds = {}
+	if isBank and addon.isRetail then
+		for id in pairs(BAG_IDS.BANK) do allBankIds[id] = true end
+		for id in pairs(BAG_IDS.WARBANK) do allBankIds[id] = true end
+	end
+	for bagId in pairs(isBank and addon.isRetail and allBankIds or BAG_IDS[isBank and "BANK" or "BAGS"]) do
 		self.content[bagId] = { size = 0 }
 		tinsert(bagSlots, bagId)
 		if not addon.itemParentFrames[bagId] then
@@ -217,8 +221,9 @@ function containerProto:OnCreate(name, isBank, bagObject)
 
 	if addon.isRetail then
 		if self.isBank then
-			self:CreateReagentTabButton()
 			self:CreateDepositButton()
+			self:CreateGearDepositButton()
+			self:CreateBankTabs()
 		end
 		self:CreateSortButton()
 	end
@@ -276,10 +281,8 @@ function containerProto:OnCreate(name, isBank, bagObject)
 		if isBank then
 			if C_Container then
 				hooksecurefunc(C_Container, 'SortBankBags', ForceFullLayout)
-				hooksecurefunc(C_Container, 'SortReagentBankBags', ForceFullLayout)
 			else
 				hooksecurefunc('SortBankBags', ForceFullLayout)
-				hooksecurefunc('SortReagentBankBags', ForceFullLayout)
 			end
 		else
 			if C_Container then
@@ -340,27 +343,132 @@ end
 	return button
 end
 
+-- Find an empty slot in the warbank, tracking already-claimed slots within one pass.
+local function FindEmptyWarbankSlot(claimed)
+	for bag in pairs(BAG_IDS.WARBANK) do
+		local numSlots = GetContainerNumSlots(bag)
+		for slot = 1, numSlots do
+			local key = bag .. "_" .. slot
+			if not claimed[key] and not GetContainerItemID(bag, slot) then
+				claimed[key] = true
+				return bag, slot
+			end
+		end
+	end
+end
+
+-- Deposit matched warbound items from bags into the warbank via pickup/place.
+local function DepositWarboundFiltered(filter)
+	if not C_Bank or not C_Bank.IsItemAllowedInBankType then return end
+	local claimed = {}
+	for bag in pairs(BAG_IDS.BAGS) do
+		for slot = 1, GetContainerNumSlots(bag) do
+			local itemID = GetContainerItemID(bag, slot)
+			if itemID then
+				local itemLoc = ItemLocation:CreateFromBagAndSlot(bag, slot)
+				if itemLoc:IsValid() and C_Bank.IsItemAllowedInBankType(Enum.BankType.Account, itemLoc) then
+					if filter(itemID) then
+						local dstBag, dstSlot = FindEmptyWarbankSlot(claimed)
+						if dstBag then
+							C_Container.PickupContainerItem(bag, slot)
+							C_Container.PickupContainerItem(dstBag, dstSlot)
+						else
+							ClearCursor()
+							return  -- warbank full
+						end
+					end
+				end
+			end
+		end
+	end
+end
+
+function addon:DepositWarboundReagents()
+	DepositWarboundFiltered(function(itemID)
+		local _, _, _, _, _, _, _, _, _, _, _, classID, _, _, _, _, isCraftingReagent = GetItemInfo(itemID)
+		return isCraftingReagent or classID == Enum.ItemClass.Tradegoods
+	end)
+end
+
+function addon:DepositWarboundGear()
+	DepositWarboundFiltered(function(itemID)
+		local _, _, _, _, _, _, _, _, _, _, _, classID = GetItemInfo(itemID)
+		return classID == Enum.ItemClass.Weapon or classID == Enum.ItemClass.Armor
+	end)
+end
+
 function containerProto:CreateDepositButton()
-	local button = self:CreateModuleAutoButton(
+	if not addon.isRetail then return end
+	local button = self:CreateModuleButton(
 		"D",
 		0,
-		REAGENTBANK_DEPOSIT,
-		L["auto-deposit"],
-		"autoDeposit",
-		function()
-			DepositReagentBank()
+		function(_, mouseButton)
+			if mouseButton == "RightButton" then
+				local key = self.isWarbank and "warbank" or "bank"
+				if addon.db.profile.autoDeposit == key then
+					addon.db.profile.autoDeposit = false
+					PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_OFF)
+				else
+					addon.db.profile.autoDeposit = key
+					PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
+				end
+				return
+			end
+			if self.isWarbank then
+				addon:DepositWarboundReagents()
+			else
+				C_Bank.AutoDepositItemsIntoBank(Enum.BankType.Character)
+			end
 			for bag in pairs(self:GetBagIds()) do
 				self:UpdateContent(bag)
 			end
 		end,
-		L["You can block auto-deposit ponctually by pressing a modified key while talking to the banker."]
+		function(_, tooltip)
+			local key = self.isWarbank and "warbank" or "bank"
+			local isEnabled = addon.db.profile.autoDeposit == key
+			local statusText = isEnabled
+				and ('|cff00ff00' .. L["enabled"] .. '|r')
+				or  ('|cffff0000' .. L["disabled"] .. '|r')
+			tooltip:AddLine(L["Deposit Reagents"], 1, 1, 1)
+			tooltip:AddLine(format(L["Auto-deposit reagents is: %s."], statusText))
+			tooltip:AddLine(L["Right-click to toggle auto-deposit for this tab."])
+			if addon.db.profile.autoDeposit and addon.db.profile.autoDeposit ~= key then
+				local other = self.isWarbank and L["Bank"] or L["Warbank"]
+				tooltip:AddLine(format(L["Note: auto-deposit is currently enabled for the %s tab."], other), 1, 0.8, 0)
+			end
+		end
 	)
+	self.DepositButton = button
+end
 
-	if not IsReagentBankUnlocked() then
-		button:Hide()
-		button:SetScript('OnEvent', button.Show)
-		button:RegisterEvent('REAGENTBANK_PURCHASED')
-	end
+function containerProto:CreateGearDepositButton()
+	if not addon.isRetail then return end
+	local button = self:CreateModuleButton(
+		"G",
+		2,
+		function(_, mouseButton)
+			if mouseButton == "RightButton" then
+				addon.db.profile.autoDepositGear = not addon.db.profile.autoDepositGear
+				PlaySound(addon.db.profile.autoDepositGear and SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON or SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_OFF)
+				return
+			end
+			addon:DepositWarboundGear()
+			for bag in pairs(self:GetBagIds()) do
+				self:UpdateContent(bag)
+			end
+		end,
+		function(_, tooltip)
+			local isEnabled = addon.db.profile.autoDepositGear
+			local statusText = isEnabled
+				and ('|cff00ff00' .. L["enabled"] .. '|r')
+				or  ('|cffff0000' .. L["disabled"] .. '|r')
+			tooltip:AddLine(L["Deposit Warbound Gear"], 1, 1, 1)
+			tooltip:AddLine(format(L["Auto-deposit warbound gear is: %s."], statusText))
+			tooltip:AddLine(L["Right-click to toggle auto-deposit for warbound gear."])
+		end
+	)
+	button:SetShown(false)
+	self.GearDepositButton = button
 end
 
 function containerProto:CreateCloseButton()
@@ -380,11 +488,65 @@ function containerProto:CreateSortButton()
 		10,
 		function()
 			addon:CloseAllBags()
-			self.bagObject:Sort(self.isReagentBank)
+			if not addon.isRetail then
+				self.bagObject:Sort(self.isWarbank)
+			end
 			self.forceLayout = true
 		end,
 		L["(Blizzard's) Sort items"]
 	)
+end
+
+function containerProto:CreateBankTabs()
+	if not addon.isRetail then return end
+
+	local function createTab(id, text, onClick)
+		local tab = CreateFrame("Button", self:GetName().."Tab"..id, self)
+		Mixin(tab, BackdropTemplateMixin)
+		tab:SetFrameStrata("MEDIUM")
+		tab:SetSize(75, 22)
+		tab:SetBackdrop({
+			bgFile   = [[Interface\Tooltips\UI-Tooltip-Background]],
+			edgeFile = [[Interface\Tooltips\UI-Tooltip-Border]],
+			tile = false, edgeSize = 8,
+			insets = { left = 2, right = 2, top = 2, bottom = 2 },
+		})
+		local label = tab:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+		label:SetAllPoints()
+		label:SetJustifyH("CENTER")
+		label:SetText(text)
+		tab.label = label
+		tab:SetScript("OnClick", onClick)
+		tab:SetScript("OnEnter", function(t)
+			t:SetBackdropColor(0.15, 0.15, 0.15, 0.95)
+		end)
+		tab:SetScript("OnLeave", function(t)
+			t:SetSelected(t.selected)
+		end)
+		function tab:SetSelected(selected)
+			self.selected = selected
+			if selected then
+				self:SetBackdropColor(0.05, 0.10, 0.25, 0.95)
+				self:SetBackdropBorderColor(0.4, 0.6, 1.0, 1.0)
+				self.label:SetTextColor(1, 1, 1, 1)
+			else
+				self:SetBackdropColor(0, 0, 0, 0.80)
+				self:SetBackdropBorderColor(0.25, 0.25, 0.25, 0.8)
+				self.label:SetTextColor(0.65, 0.65, 0.65, 1)
+			end
+		end
+		tab:SetSelected(false)
+		return tab
+	end
+
+	local tab1 = createTab(1, L["Bank"],    function() self:ShowWarbankTab(false) end)
+	local tab2 = createTab(2, L["Warbank"], function() self:ShowWarbankTab(true)  end)
+	tab1:SetPoint("TOPLEFT", self, "BOTTOMLEFT", 10, 4)
+	tab2:SetPoint("LEFT", tab1, "RIGHT", 3, 0)
+
+	self.BankTab    = tab1
+	self.WarbankTab = tab2
+	tab1:SetSelected(true)
 end
 
 function containerProto:CreateLockButton()
@@ -398,35 +560,6 @@ function containerProto:CreateLockButton()
 	)
 end
 
-function containerProto:CreateReagentTabButton()
-	local button
-	button = self:CreateModuleButton(
-		"R",
-		0,
-		function()
-			if not IsReagentBankUnlocked() then
-				PlaySound(SOUNDKIT.IG_MAINMENU_OPTION)
-				return StaticPopup_Show("CONFIRM_BUY_REAGENTBANK_TAB")
-			end
-			self:ShowReagentTab(not self.isReagentBank)
-		end,
-		function(_, tooltip)
-			if not IsReagentBankUnlocked() then
-				tooltip:AddLine(BANKSLOTPURCHASE, 1, 1, 1)
-				tooltip:AddLine(REAGENTBANK_PURCHASE_TEXT)
-				SetTooltipMoney(tooltip, GetReagentBankCost(), nil, COSTS_LABEL)
-				return
-			end
-			tooltip:AddLine(
-				format(
-					L['Click to swap between %s and %s.'],
-					REAGENT_BANK:lower(),
-					L["Bank"]:lower()
-				)
-			)
-		end
-	)
-end
 
 --------------------------------------------------------------------------------
 -- Scripts & event handlers
@@ -434,16 +567,10 @@ end
 
 function containerProto:GetBagIds()
 	if addon.isRetail then
-		return BAG_IDS[
-			self.isReagentBank and "REAGENTBANK_ONLY" or
-			self.isBank and "BANK_ONLY" or
-			"BAGS"
-		]
+		if not self.isBank then return BAG_IDS.BAGS end
+		return self.isWarbank and BAG_IDS.WARBANK or BAG_IDS.BANK
 	else
-		return BAG_IDS[
-			self.isBank and "BANK" or
-			"BAGS"
-		]
+		return BAG_IDS[self.isBank and "BANK" or "BAGS"]
 	end
 end
 
@@ -481,8 +608,8 @@ function containerProto:OnShow()
 end
 
 function containerProto:OnHide()
-	if self.isReagentBank then
-		self:ShowReagentTab(false)
+	if self.isWarbank then
+		self:ShowWarbankTab(false)
 	end
 	containerParentProto.OnHide(self)
 	PlaySound(self.isBank and SOUNDKIT.IG_MAINMENU_CLOSE or SOUNDKIT.IG_BACKPACK_CLOSE)
@@ -514,24 +641,32 @@ function containerProto:RefreshContents()
 	self:UpdateButtons()
 end
 
-function containerProto:ShowReagentTab(show)
-	self:Debug('ShowReagentTab', show)
+function containerProto:ShowWarbankTab(show)
+	if not addon.isRetail then return end
+	self:Debug('ShowWarbankTab', show)
 
-	self.Title:SetText(show and REAGENT_BANK or L["Bank"])
+	self.Title:SetText(show and L["Warbank"] or L["Bank"])
 	self.BagSlotButton:SetEnabled(not show)
 	if show and self.BagSlotPanel:IsShown() then
 		self.BagSlotPanel:Hide()
 		self.BagSlotButton:SetChecked(false)
 	end
-	BankFrame.selectedTab = show and 2 or 1
 
 	local previousBags = self:GetBagIds()
-	self.isReagentBank = show
+	self.isWarbank = show
+	if self.BankTab then
+		self.BankTab:SetSelected(not show)
+		self.WarbankTab:SetSelected(show)
+	end
 
-	if self.isReagentBank then
-		self.Title:SetFontObject(addon.fonts.reagentBank.bagFont)
+	if self.isWarbank then
+		self.Title:SetFontObject(addon.fonts.warbank.bagFont)
 	else
 		self.Title:SetFontObject(addon.fonts[string.lower(self.name)].bagFont)
+	end
+
+	if self.GearDepositButton then
+		self.GearDepositButton:SetShown(show)
 	end
 
 	for bag in pairs(previousBags) do
@@ -659,7 +794,7 @@ end
 --------------------------------------------------------------------------------
 
 function containerProto:UpdateSkin()
-	local backdrop, r, g, b, a = addon:GetContainerSkin(self.name, self.isReagentBank)
+	local backdrop, r, g, b, a = addon:GetContainerSkin(self.name, self.isWarbank)
 	self:SetBackdrop(backdrop)
 	self:ApplyBackdrop()
 	self:SetBackdropColor(r, g, b, a)
@@ -816,8 +951,6 @@ local function FilterByBag(slotData)
 		name = L['Backpack']
 	elseif bag == BANK_CONTAINER then
 		name = L['Bank']
-	elseif bag == REAGENTBANK_CONTAINER then
-		name = REAGENT_BANK
 	elseif bag <= NUM_BAG_SLOTS then
 		name = format(L["Bag #%d"], bag)
 	elseif addon.isRetail then

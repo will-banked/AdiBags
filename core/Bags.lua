@@ -31,7 +31,6 @@ local IsBagOpen = _G.IsBagOpen
 local CloseBankFrame = C_Bank and _G.C_Bank.CloseBankFrame or _G.CloseBankFrame
 local SortBags = C_Container and _G.C_Container.SortBags or _G.SortBags
 local SortBankBags = C_Container and _G.C_Container.SortBankBags or _G.SortBankBags
-local SortReagentBankBags = C_Container and _G.C_Container.SortReagentBankBags or _G.SortReagentBankBags
 local ipairs = _G.ipairs
 local pairs = _G.pairs
 local setmetatable = _G.setmetatable
@@ -258,6 +257,26 @@ do
 
 		BankFrame:SetParent(UIHider)
 
+		if addon.isRetail then
+			-- When depositing a non-warbank-eligible item while viewing the warbank tab,
+			-- switch back to the regular bank so the item is visible.
+			self:SecureHook(C_Container, 'UseContainerItem', function(bag, slot)
+				if not addon.BAG_IDS.BAGS[bag] then return end
+				if not addon.atBank then return end
+				if not self:HasFrame() then return end
+				local frame = self:GetFrame()
+				if not C_Bank or not C_Bank.IsItemAllowedInBankType then return end
+				local itemLoc = ItemLocation:CreateFromBagAndSlot(bag, slot)
+				if not itemLoc:IsValid() then return end
+				local warbankEligible = C_Bank.IsItemAllowedInBankType(Enum.BankType.Account, itemLoc)
+				if frame.isWarbank and not warbankEligible then
+					C_Timer.After(0, function() frame:ShowWarbankTab(false) end)
+				elseif not frame.isWarbank and warbankEligible then
+					C_Timer.After(0, function() frame:ShowWarbankTab(true) end)
+				end
+			end)
+		end
+
 		if addon:GetInteractingWindow() == "BANKFRAME" then
 			self:Open()
 		end
@@ -273,6 +292,23 @@ do
 	function bank:AdiBags_InteractingWindowChanged(event, new, old)
 		if new == 'BANKFRAME' and not self:IsOpen() then
 			self:Open()
+			if addon.isRetail then
+				local autoDeposit = addon.db.profile.autoDeposit
+				local autoDepositGear = addon.db.profile.autoDepositGear
+				if autoDeposit or autoDepositGear then
+					C_Timer.After(1, function()
+						if not addon.atBank then return end
+						if autoDeposit == "bank" then
+							C_Bank.AutoDepositItemsIntoBank(Enum.BankType.Character)
+						elseif autoDeposit == "warbank" then
+							addon:DepositWarboundReagents()
+						end
+						if autoDepositGear then
+							addon:DepositWarboundGear()
+						end
+					end)
+				end
+			end
 		elseif old == 'BANKFRAME' and self:IsOpen() then
 			self:Close()
 		end
@@ -284,9 +320,6 @@ do
 
 	function bank:PreOpen()
 		self.hooks[BankFrame].Show(BankFrame)
-		if addon.isRetail and addon.db.profile.autoDeposit and not IsModifierKeyDown() then
-			DepositReagentBank()
-		end
 	end
 
 	function bank:PostClose()
@@ -294,10 +327,10 @@ do
 		CloseBankFrame()
 	end
 
-	function bank:Sort(isReagentBank)
+	function bank:Sort(isWarbank)
 		PlaySound(SOUNDKIT.UI_BAG_SORTING_01)
-		if isReagentBank then
-			SortReagentBankBags()
+		if isWarbank then
+			C_Container.SortAccountBankBags()
 		else
 			SortBankBags()
 		end

@@ -27,7 +27,14 @@ function addon:SetupDefaultFilters()
 	local _G = _G
 	local BANK_CONTAINER = _G.BANK_CONTAINER or ( Enum.BagIndex and Enum.BagIndex.Bank ) or -1
 	local BANK_CONTAINER_INVENTORY_OFFSET = _G.BANK_CONTAINER_INVENTORY_OFFSET
-	local EquipmentManager_UnpackLocation = _G.EquipmentManager_UnpackLocation
+	local EquipmentManager_UnpackLocation = _G.EquipmentManager_UnpackLocation or function(location)
+		return bit.band(location, 0x1) ~= 0,
+		       bit.band(location, 0x2) ~= 0,
+		       bit.band(location, 0x4) ~= 0,
+		       bit.band(location, 0x8) ~= 0,
+		       bit.rshift(bit.band(location, 0x000FFF00), 8),
+		       bit.rshift(bit.band(location, 0xFFF00000), 20)
+	end
 	local format = _G.format
 	local GetContainerItemQuestInfo = C_Container and _G.C_Container.GetContainerItemQuestInfo or _G.GetContainerItemQuestInfo
 	local GetEquipmentSetInfo = _G.C_EquipmentSet.GetEquipmentSetInfo
@@ -123,7 +130,7 @@ function addon:SetupDefaultFilters()
 								end
 								if bags and slot and container then
 									slotId = GetSlotId(container, slot)
-								elseif bank and slot then
+								elseif bank and slot and BANK_CONTAINER_INVENTORY_OFFSET then
 									slotId = GetSlotId(BANK_CONTAINER, slot - BANK_CONTAINER_INVENTORY_OFFSET)
 								elseif not (player or voidstorage) or not slot then
 									missing = true
