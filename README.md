@@ -1,6 +1,6 @@
-# AdiBags 
+# AdiBags Fork
 
-[![Discord Banner 2](https://discordapp.com/api/guilds/1063213796845428876/widget.png?style=banner2)](https://discord.gg/a6DQuK8hV7)
+> **Note:** This is an unofficial fork of [AdiBags](https://github.com/AdiAddons/AdiBags) maintained for because I just like the look of AdiBags and cba moving to a new bag addon. Development here is focused exclusively on **retail WoW** — classic, TBC, Wrath, Cata, and other versions are not actively maintained in this fork. If you're looking for the latest addon from the original maintainers of AdiBags, you want [BetterBags](https://www.curseforge.com/wow/addons/better-bags).
 
 AdiBags is a World of Warcraft addon that displays the contents of your bags in single view, distributed into several sections using smart filters. It is heavily inspired by Nargiddley's Baggins.
 
