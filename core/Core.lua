@@ -107,6 +107,25 @@ function addon:OnInitialize()
 	if addon.isRetail then
 		C_CVar.SetCVar("professionToolSlotsExampleShown", 1)
 		C_CVar.SetCVar("professionAccessorySlotsExampleShown", 1)
+		-- Dismiss the reagent bag HelpTip tutorial. AdiBags replaces Blizzard's container
+		-- frames so the tutorial tooltip can never anchor to the item button and floats on
+		-- screen permanently with no close button.
+		if LE_FRAME_TUTORIAL_EQUIP_REAGENT_BAG then
+			SetCVarBitfield("closedInfoFrames", LE_FRAME_TUTORIAL_EQUIP_REAGENT_BAG, true)
+			if HelpTip then
+				HelpTip:HideAllSystem("TutorialReagentBag")
+			end
+			if BagTutorialBaseMixin then
+				local origOnBagUpdate = BagTutorialBaseMixin.OnBagUpdate
+				BagTutorialBaseMixin.OnBagUpdate = function(self, ...)
+					if GetCVarBitfield("closedInfoFrames", LE_FRAME_TUTORIAL_EQUIP_REAGENT_BAG) then
+						if HelpTip then HelpTip:HideAllSystem("TutorialReagentBag") end
+						return
+					end
+					return origOnBagUpdate(self, ...)
+				end
+			end
+		end
 	end
 
 	self:Debug('Initialized')
